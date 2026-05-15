@@ -63,6 +63,7 @@ export default async function handler(req, res) {
   const parsed = url.parse(req.url, true);
   const pathname = decodeURIComponent(parsed.pathname);
   const query = parsed.query;
+  const normalizedPath = pathname.startsWith('/api') ? pathname : `/api${pathname}`;
 
   setCORS(res);
 
@@ -81,8 +82,6 @@ export default async function handler(req, res) {
     return res.end();
   }
 
-  // Handle /api/ prefix if it's there (for local testing or specific routing)
-  const normalizedPath = pathname.startsWith('/api') ? pathname : `/api${pathname}`;
 
   /* Auth: Register */
   if (req.method === 'POST' && normalizedPath === '/api/auth/register') {
