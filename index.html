@@ -879,16 +879,45 @@
           <thead>
             <tr>
               <th>Donor</th>
+              <th>Contact</th>
               <th>Type</th>
               <th>Blood Group</th>
               <th>City</th>
+              <th>Stats</th>
+              <th>Biometric</th>
               <th>Registered On</th>
               <th>Donor ID</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="recentTableBody">
             <tr>
               <td colspan="6" style="text-align:center;color:var(--text-faint);padding:30px;">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    
+    <!-- EMERGENCY REQUESTS -->
+    <section id="requests">
+      <div class="section-head">
+        <h2>Live Emergency Requests</h2><span class="tag" id="requestsTag">LOADING…</span>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Requester</th>
+              <th>Donor ID</th>
+              <th>Type</th>
+              <th>Details</th>
+              <th>Requested On</th>
+            </tr>
+          </thead>
+          <tbody id="requestsTableBody">
+            <tr>
+              <td colspan="5" style="text-align:center;color:var(--text-faint);padding:30px;">No emergency requests logged yet.</td>
             </tr>
           </tbody>
         </table>
@@ -971,6 +1000,7 @@
           fetch(`${API}/api/dashboard/donation-types`),
           fetch(`${API}/api/donors/recent?limit=100`),
           fetch(`${API}/api/dashboard/cities`),
+          fetch(`${API}/api/requests`),
         ]);
 
         const stats = await statsRes.json();
@@ -978,6 +1008,7 @@
         const types = await typeRes.json();
         const recent = await recentRes.json();
         const cities = await cityRes.json();
+        const requests = await requestsRes.json();
 
 
         /* Hide loading overlay */
@@ -993,6 +1024,7 @@
         renderTypes(types.donation_type_breakdown || []);
         renderRecent(recent.donors || []);
         renderCities(cities.city_wise_distribution || []);
+        renderRequests(requests.requests || []);
 
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -1117,16 +1149,60 @@
         const initials = (d.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
         const typeKey = (d.type || '').toLowerCase();
         const badgeCls = typeKey === 'blood' ? 'type-blood' : typeKey === 'organ' ? 'type-organ' : 'type-both';
+        
+        const hasBio = d.biometric && d.biometric !== 'null';
+        const bioTag = hasBio 
+          ? '<span class="type-badge type-organ" style="background:rgba(20,184,166,0.1);color:var(--teal)">✓ ACTIVE</span>'
+          : '<span class="type-badge" style="background:rgba(255,255,255,0.05);color:var(--text-faint)">NONE</span>';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
         <td><span class="table-avatar">${initials}</span>${d.name || '—'}</td>
+        <td>
+          <div style="font-size:0.8rem;font-weight:600">${d.phone || '—'}</div>
+          <div style="font-size:0.65rem;color:var(--text-dim)">${d.email || '—'}</div>
+        </td>
         <td><span class="type-badge ${badgeCls}">${d.type || '—'}</span></td>
         <td>${d.bloodgroup ? `<span class="bg-pill">${d.bloodgroup}</span>` : '<span style="color:var(--text-faint)">—</span>'}</td>
         <td>${d.city || '—'}</td>
+        <td>
+          <div style="font-size:0.8rem;color:var(--red);font-weight:700">D: ${d.donated_count || 0}</div>
+          <div style="font-size:0.7rem;color:var(--text-dim)">R: ${d.received_count || 0}</div>
+        </td>
+        <td>${bioTag}</td>
         <td style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text-dim)">${d.registeredOn || '—'}</td>
         <td style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text-faint)">${d.donorId || '—'}</td>
+        <td>
+          <button onclick="deleteDonor('${d.donorId}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.8rem;" title="Delete Donor">🗑️</button>
+        </td>
       `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* ── Render: Emergency requests ── */
+    function renderRequests(requests) {
+      const tbody = document.getElementById('requestsTableBody');
+      const tag = document.getElementById('requestsTag');
+      tbody.innerHTML = '';
+      
+      tag.textContent = requests.length + ' RECENT';
+
+      if (!requests.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No emergency requests logged yet.</td></tr>';
+        return;
+      }
+
+      requests.forEach(r => {
+        const date = new Date(r.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${r.requesterName}</strong></td>
+          <td style="font-family:'DM Mono',monospace;font-size:0.75rem">${r.donorId}</td>
+          <td><span class="type-badge ${r.requestType === 'Blood' ? 'type-blood' : 'type-organ'}">${r.requestType}</span></td>
+          <td style="font-size:0.75rem;max-width:200px;color:var(--text-dim)">${r.details || '—'}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:0.75rem">${date}</td>
+        `;
         tbody.appendChild(tr);
       });
     }
@@ -1161,6 +1237,26 @@
           el.style.width = el.dataset.pct + '%';
         });
       }, 300);
+    }
+
+    /* ── Action: Delete Donor ── */
+    async function deleteDonor(id) {
+      if (!confirm(`Are you sure you want to delete donor ${id}?`)) return;
+      try {
+        const res = await fetch(`${API}/api/donors/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ donorId: id })
+        });
+        if (res.ok) {
+          loadDashboard();
+        } else {
+          alert('Failed to delete donor.');
+        }
+      } catch (err) {
+        console.error('Delete error:', err);
+        alert('Error connecting to server.');
+      }
     }
 
     /* ── Init ── */
