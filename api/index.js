@@ -66,7 +66,17 @@ export default async function handler(req, res) {
 
   setCORS(res);
 
+/* ── Debug Endpoint ── */
+  if (req.method === 'GET' && normalizedPath === '/api/debug-files') {
+    try {
+      const files = fs.readdirSync(path.join(process.cwd()));
+      const dbFiles = fs.existsSync(path.join(process.cwd(), 'db')) ? fs.readdirSync(path.join(process.cwd(), 'db')) : 'NOT FOUND';
+      return sendJSON(res, 200, { cwd: process.cwd(), root: files, db: dbFiles });
+    } catch (err) { return sendJSON(res, 500, { error: err.message }); }
+  }
+
   if (req.method === 'OPTIONS') {
+
     res.writeHead(204);
     return res.end();
   }
