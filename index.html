@@ -891,7 +891,7 @@
     }
 
     /* ── Blood group colour helper ── */
-    const BG_ORDER = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+    const BG_ORDER = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'N/A'];
 
     /* ── Type icon map ── */
     const TYPE_ICON = {
@@ -910,7 +910,7 @@
           fetch(`${API}/api/stats`),
           fetch(`${API}/api/dashboard/blood-groups`),
           fetch(`${API}/api/dashboard/donation-types`),
-          fetch(`${API}/api/donors/recent?limit=15`),
+          fetch(`${API}/api/donors/recent?limit=100`),
           fetch(`${API}/api/dashboard/cities`),
         ]);
 
