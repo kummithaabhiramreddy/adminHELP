@@ -994,7 +994,7 @@
     /* ── Main data fetch ── */
     async function loadDashboard() {
       try {
-        const [statsRes, bloodRes, typeRes, recentRes, cityRes] = await Promise.all([
+        const [statsRes, bloodRes, typeRes, recentRes, cityRes, requestsRes] = await Promise.all([
           fetch(`${API}/api/stats`),
           fetch(`${API}/api/dashboard/blood-groups`),
           fetch(`${API}/api/dashboard/donation-types`),
