@@ -1,38 +1,26 @@
 import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon, neonConfig } from '@neondatabase/serverless';
 import { Pool } from 'pg';
 import * as schema from './schema.js';
 
-// Create connection pool
+// Enable connection caching in serverless environments
+neonConfig.fetchConnectionCache = true;
+
 const connectionString = process.env.DATABASE_URL;
 
-const pool = new Pool(connectionString ? {
-  connectionString,
-  ssl: {
-    rejectUnauthorized: false
-  }
-} : {
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
-  database: 'donor_registry',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+// Fallback for local development
+const localUrl = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+
+const sql = neon(connectionString || localUrl);
+
+// Create Drizzle instance using the HTTP driver (best for Vercel)
+export const db = drizzle(sql, { schema });
+
+// Export pool for local scripts (like setupdb.js)
+export const pool = new Pool({
+  connectionString: connectionString || localUrl,
+  ssl: connectionString ? { rejectUnauthorized: false } : false
 });
 
-// Connection event handlers
-pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL Database');
-});
-
-pool.on('error', (err) => {
-  console.error('❌ Database connection error:', err);
-});
-
-// Create Drizzle instance
-export const db = drizzle(pool, { schema });
-
-// Export for migrations
-export { pool };
+console.log('✅ Database client initialized (Neon HTTP)');

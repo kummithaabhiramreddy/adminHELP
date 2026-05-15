@@ -654,4 +654,16 @@ export default {
       throw err;
     }
   },
+
+  /**
+   * Get all emergency requests
+   */
+  getAllRequests: async () => {
+    try {
+      return await db.select().from(emergencyRequests).orderBy(desc(emergencyRequests.timestamp));
+    } catch (err) {
+      console.error('❌ Database query error (requests):', err);
+      throw err;
+    }
+  },
 };
