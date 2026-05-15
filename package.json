@@ -1,6 +1,8 @@
 {
   "name": "donor-registry",
   "version": "1.0.0",
+  "main": "server.js",
+
   "description": "Blood and Organ Donor Registry System",
   "type": "module",
   "scripts": {
