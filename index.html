@@ -876,11 +876,115 @@
       transform: translateY(-2px);
     }
 
-    /* Hide biometric auth on desktop devices */
+    /* Hide fingerprint biometric on desktop devices */
     @media (min-width: 769px) {
-      #fingerprintBtn, .auth-divider {
+      #fingerprintBtn {
         display: none !important;
       }
+    }
+
+    .face-btn {
+      background: #312e81;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .face-btn .emoji {
+      font-size: 28px;
+      filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.5));
+    }
+    .face-btn:hover {
+      background: #3730a3;
+    }
+
+    /* ── FACE SCAN MODAL ────────────────────────────── */
+    .face-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.95);
+      z-index: 20000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .face-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .face-modal-content {
+      background: #1e293b;
+      border-radius: 24px;
+      padding: 30px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .face-scanner-container {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid #6366f1;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+      background: #0f172a;
+    }
+    #faceVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+    .face-reticle {
+      position: absolute;
+      inset: 15px;
+      border: 2px dashed rgba(99, 102, 241, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: rotate-reticle 10s linear infinite;
+    }
+    @keyframes rotate-reticle {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .face-laser {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(to bottom, rgba(99, 102, 241, 0), #6366f1, rgba(99, 102, 241, 0));
+      box-shadow: 0 0 10px #6366f1;
+      pointer-events: none;
+      animation: laser-move 2s ease-in-out infinite;
+    }
+    @keyframes laser-move {
+      0%, 100% { top: 10%; }
+      50% { top: 90%; }
+    }
+    .face-status {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 24px;
+      min-height: 24px;
+    }
+    .cancel-btn {
+      background: #475569;
+      color: #f8fafc;
+    }
+    .cancel-btn:hover {
+      background: #64748b;
     }
   </style>
 </head>
@@ -898,9 +1002,14 @@
       <h2 class="auth-title">Admin Center</h2>
       <p class="auth-subtitle">Secure access required</p>
 
-      <button class="auth-btn fingerprint-btn" id="fingerprintBtn">
+      <button class="auth-btn fingerprint-btn" id="fingerprintBtn" style="margin-bottom: 12px;">
         <span class="emoji">👆</span>
         Use Fingerprint
+      </button>
+
+      <button class="auth-btn face-btn" id="faceBtn">
+        <span class="emoji">👤</span>
+        Use Face Scan
       </button>
 
       <div class="auth-divider">
@@ -909,6 +1018,19 @@
 
       <input type="password" class="auth-input" id="pinInput" placeholder="Secure PIN" />
       <button class="auth-btn unlock-btn" id="unlockBtn">UNLOCK DASHBOARD</button>
+    </div>
+  </div>
+
+  <!-- FACE SCAN MODAL -->
+  <div class="face-modal" id="faceModal">
+    <div class="face-modal-content">
+      <div class="face-scanner-container">
+        <video id="faceVideo" autoplay playsinline muted></video>
+        <div class="face-reticle"></div>
+        <div class="face-laser"></div>
+      </div>
+      <div class="face-status" id="faceStatus">Align your face inside the circle</div>
+      <button class="auth-btn cancel-btn" id="closeFaceBtn">Cancel</button>
     </div>
   </div>
   <!-- LOADING OVERLAY -->
@@ -1540,6 +1662,180 @@
         }
       }
     });
+
+    // Hardcoded fallback face template - update here to lock strictly to a specific face array
+    const HARDCODED_FACE_TEMPLATE = null;
+
+    // Convert 32x32 canvas image data to grayscale array
+    function getGrayscaleArray(ctx) {
+      const imgData = ctx.getImageData(0, 0, 32, 32);
+      const data = imgData.data;
+      const gray = new Uint8Array(1024);
+      for (let i = 0; i < 1024; i++) {
+        const r = data[i * 4];
+        const g = data[i * 4 + 1];
+        const b = data[i * 4 + 2];
+        gray[i] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+      }
+      return gray;
+    }
+
+    // Compare live grayscale array with stored template using translation shifts for robustness
+    function compareTemplates(live, stored) {
+      let minDiff = Infinity;
+      const size = 32;
+
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          let diffSum = 0;
+          let count = 0;
+
+          for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+              const ly = y + dy;
+              const lx = x + dx;
+
+              if (ly >= 0 && ly < size && lx >= 0 && lx < size) {
+                const liveVal = live[ly * size + lx];
+                const storedVal = stored[y * size + x];
+                diffSum += Math.abs(liveVal - storedVal);
+                count++;
+              }
+            }
+          }
+
+          const avgDiff = diffSum / count;
+          if (avgDiff < minDiff) {
+            minDiff = avgDiff;
+          }
+        }
+      }
+      return minDiff;
+    }
+
+    let faceStream = null;
+    let scanAnimationId = null;
+
+    // Face Scan Button Click Handler
+    document.getElementById('faceBtn').addEventListener('click', async () => {
+      const modal = document.getElementById('faceModal');
+      const statusEl = document.getElementById('faceStatus');
+      const video = document.getElementById('faceVideo');
+
+      statusEl.textContent = "Requesting camera access...";
+      modal.classList.add('active');
+
+      try {
+        faceStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 320, height: 320, facingMode: "user" }
+        });
+        video.srcObject = faceStream;
+
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = 32;
+        offscreenCanvas.height = 32;
+        const offscreenCtx = offscreenCanvas.getContext('2d');
+
+        let existingTemplate = localStorage.getItem('admin_face_template');
+        if (!existingTemplate && HARDCODED_FACE_TEMPLATE) {
+          existingTemplate = JSON.stringify(HARDCODED_FACE_TEMPLATE);
+        }
+
+        if (!existingTemplate) {
+          // FIRST TIME REGISTRATION
+          statusEl.textContent = "PIN Required for first-time setup...";
+          const pin = prompt("First-time setup: Enter Admin PIN to register your face:");
+          if (pin !== ADMIN_PIN) {
+            if (pin !== null) alert("Incorrect PIN. Face registration denied.");
+            closeFaceScanner();
+            return;
+          }
+
+          statusEl.textContent = "Scanning and registering face...";
+          // Capture after a 1.5s delay to allow camera auto-exposure to settle
+          setTimeout(() => {
+            if (!faceStream) return;
+            offscreenCtx.drawImage(video, 0, 0, 32, 32);
+            const templateArray = getGrayscaleArray(offscreenCtx);
+            localStorage.setItem('admin_face_template', JSON.stringify(Array.from(templateArray)));
+            alert("Face registered successfully!");
+            closeFaceScanner();
+            unlockDashboard();
+          }, 1500);
+
+        } else {
+          // ALREADY REGISTERED: AUTHENTICATE
+          const stored = new Uint8Array(JSON.parse(existingTemplate));
+          statusEl.textContent = "Align face. Scanning...";
+          
+          let matchFound = false;
+          let framesMatchedCount = 0;
+          const startTime = Date.now();
+
+          const scanLoop = () => {
+            if (matchFound || !faceStream) return;
+
+            // Timeout after 10s
+            if (Date.now() - startTime > 10000) {
+              statusEl.textContent = "Face not recognized. Try again.";
+              setTimeout(closeFaceScanner, 2000);
+              return;
+            }
+
+            offscreenCtx.drawImage(video, 0, 0, 32, 32);
+            const live = getGrayscaleArray(offscreenCtx);
+            const diff = compareTemplates(live, stored);
+
+            // A diff below 35 usually indicates high similarity
+            if (diff < 35) {
+              framesMatchedCount++;
+              if (framesMatchedCount >= 3) { // Require 3 consecutive matches
+                matchFound = true;
+                statusEl.textContent = "ACCESS GRANTED! Unlocking...";
+                statusEl.style.color = "var(--teal)";
+                document.querySelector('.face-scanner-container').style.borderColor = "var(--teal)";
+                setTimeout(() => {
+                  closeFaceScanner();
+                  unlockDashboard();
+                  statusEl.style.color = "";
+                  document.querySelector('.face-scanner-container').style.borderColor = "";
+                }, 1000);
+                return;
+              }
+            } else {
+              framesMatchedCount = 0;
+            }
+
+            scanAnimationId = requestAnimationFrame(scanLoop);
+          };
+
+          // Delay starting scanning analysis for 800ms for camera setup
+          setTimeout(() => {
+            if (faceStream) scanAnimationId = requestAnimationFrame(scanLoop);
+          }, 800);
+        }
+
+      } catch (err) {
+        console.error("Face scan error:", err);
+        statusEl.textContent = "Camera access denied or failed.";
+        setTimeout(closeFaceScanner, 2500);
+      }
+    });
+
+    function closeFaceScanner() {
+      if (faceStream) {
+        faceStream.getTracks().forEach(track => track.stop());
+        faceStream = null;
+      }
+      if (scanAnimationId) {
+        cancelAnimationFrame(scanAnimationId);
+        scanAnimationId = null;
+      }
+      document.getElementById('faceVideo').srcObject = null;
+      document.getElementById('faceModal').classList.remove('active');
+    }
+
+    document.getElementById('closeFaceBtn').addEventListener('click', closeFaceScanner);
 
     /* ── Init ── */
     loadDashboard();
