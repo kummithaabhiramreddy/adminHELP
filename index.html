@@ -753,6 +753,8 @@
     .auth-overlay {
       position: fixed;
       inset: 0;
+      width: 100vw;
+      height: 100vh;
       background: #0f172a;
       z-index: 10000;
       display: flex;
@@ -760,6 +762,8 @@
       justify-content: center;
       padding: 20px;
       transition: opacity 0.4s ease, visibility 0.4s ease;
+      touch-action: none;
+      overflow: hidden;
     }
     .auth-overlay.hidden {
       opacity: 0;
@@ -1849,6 +1853,11 @@
       const fpBtn = document.getElementById('fingerprintBtn');
       if (fpBtn) fpBtn.style.display = 'none';
     }
+
+    // Prevent scrolling/bouncing on mobile devices when lock screen is open
+    document.getElementById('authOverlay').addEventListener('touchmove', (e) => {
+      e.preventDefault();
+    }, { passive: false });
 
     /* ── Init ── */
     loadDashboard();
