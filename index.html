@@ -1591,9 +1591,12 @@
 
       if (!existingCredId) {
         // FIRST TIME REGISTRATION
-        const pin = prompt("First-time setup: Please enter the Admin PIN to register your fingerprint:");
+        let pin = document.getElementById('pinInput').value;
         if (pin !== ADMIN_PIN) {
-          if (pin !== null) alert("Incorrect PIN. Biometric registration denied.");
+          pin = prompt("First-time setup: Please enter the Admin PIN to register your fingerprint:");
+        }
+        if (pin !== ADMIN_PIN) {
+          if (pin !== null && pin !== '') alert("Incorrect PIN. Biometric registration denied.");
           return;
         }
 
@@ -1744,9 +1747,12 @@
         if (!existingTemplate) {
           // FIRST TIME REGISTRATION
           statusEl.textContent = "PIN Required for first-time setup...";
-          const pin = prompt("First-time setup: Enter Admin PIN to register your face:");
+          let pin = document.getElementById('pinInput').value;
           if (pin !== ADMIN_PIN) {
-            if (pin !== null) alert("Incorrect PIN. Face registration denied.");
+            pin = prompt("First-time setup: Enter Admin PIN to register your face:");
+          }
+          if (pin !== ADMIN_PIN) {
+            if (pin !== null && pin !== '') alert("Incorrect PIN. Face registration denied.");
             closeFaceScanner();
             return;
           }
@@ -1836,6 +1842,13 @@
     }
 
     document.getElementById('closeFaceBtn').addEventListener('click', closeFaceScanner);
+
+    // Hide fingerprint option on desktop/PC devices (only show in mobiles)
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (!isMobile) {
+      const fpBtn = document.getElementById('fingerprintBtn');
+      if (fpBtn) fpBtn.style.display = 'none';
+    }
 
     /* ── Init ── */
     loadDashboard();
