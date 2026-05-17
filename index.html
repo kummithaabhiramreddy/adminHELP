@@ -748,11 +748,162 @@
         grid-template-columns: 1fr 1fr;
       }
     }
+
+    /* ── AUTH OVERLAY ────────────────────────────────── */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: #0f172a;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+    .auth-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .auth-card {
+      background: #1e293b;
+      border-radius: 24px;
+      padding: 40px 30px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .auth-icon-wrap {
+      margin: 0 auto 20px;
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px -5px rgba(234, 88, 12, 0.5);
+    }
+    .auth-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+    .auth-subtitle {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-bottom: 30px;
+    }
+    .auth-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      font-family: 'Archivo', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .fingerprint-btn {
+      background: #334155;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .fingerprint-btn .emoji {
+      font-size: 28px;
+      filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.5));
+    }
+    .fingerprint-btn:hover {
+      background: #3f3f46;
+    }
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 24px 0;
+      color: #64748b;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+    }
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid #334155;
+    }
+    .auth-divider span {
+      padding: 0 10px;
+    }
+    .auth-input {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid #ea580c;
+      border-radius: 12px;
+      padding: 16px;
+      color: #f8fafc;
+      font-size: 1.1rem;
+      text-align: center;
+      margin-bottom: 16px;
+      outline: none;
+      letter-spacing: 0.2em;
+    }
+    .auth-input::placeholder {
+      color: #64748b;
+      letter-spacing: 0.05em;
+    }
+    .auth-input:focus {
+      box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.3);
+    }
+    .unlock-btn {
+      background: linear-gradient(135deg, #ea580c, #c2410c);
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .unlock-btn:hover {
+      box-shadow: 0 10px 20px -5px rgba(234, 88, 12, 0.4);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 
-<body>
+<body style="overflow: hidden;">
 
+  <!-- AUTH OVERLAY -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div class="auth-icon-wrap">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="rgba(255,255,255,0.2)" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+      </div>
+      <h2 class="auth-title">Admin Center</h2>
+      <p class="auth-subtitle">Secure access required</p>
+
+      <button class="auth-btn fingerprint-btn" id="fingerprintBtn">
+        <span class="emoji">👆</span>
+        Use Fingerprint
+      </button>
+
+      <div class="auth-divider">
+        <span>OR ENTER PIN</span>
+      </div>
+
+      <input type="password" class="auth-input" id="pinInput" placeholder="Secure PIN" />
+      <button class="auth-btn unlock-btn" id="unlockBtn">UNLOCK DASHBOARD</button>
+    </div>
+  </div>
   <!-- LOADING OVERLAY -->
   <div class="loading-overlay" id="loadingOverlay">
     <div class="loader-pulse">🩸</div>
@@ -1258,6 +1409,130 @@
         alert('Error connecting to server.');
       }
     }
+
+    /* ── AUTHENTICATION LOGIC ── */
+    const ADMIN_PIN = "OSVJA@123";
+
+    function unlockDashboard() {
+      document.getElementById('authOverlay').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    // PIN Unlock
+    document.getElementById('unlockBtn').addEventListener('click', () => {
+      const pin = document.getElementById('pinInput').value;
+      if (pin === ADMIN_PIN) {
+        unlockDashboard();
+      } else {
+        alert("Incorrect PIN.");
+        document.getElementById('pinInput').value = '';
+      }
+    });
+
+    // Helper functions for WebAuthn base64url encoding/decoding
+    function bufferToBase64url(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let str = '';
+      for (let charCode of bytes) {
+        str += String.fromCharCode(charCode);
+      }
+      const base64String = btoa(str);
+      return base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    function base64urlToBuffer(base64url) {
+      const padding = '='.repeat((4 - base64url.length % 4) % 4);
+      const base64 = (base64url + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = atob(base64);
+      const buffer = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        buffer[i] = rawData.charCodeAt(i);
+      }
+      return buffer.buffer;
+    }
+
+    // Fingerprint Button logic
+    document.getElementById('fingerprintBtn').addEventListener('click', async () => {
+      if (!window.PublicKeyCredential) {
+        alert("Biometrics not supported on this device/browser.");
+        return;
+      }
+
+      const existingCredId = localStorage.getItem('admin_bio_cred_id');
+
+      if (!existingCredId) {
+        // FIRST TIME REGISTRATION
+        const pin = prompt("First-time setup: Please enter the Admin PIN to register your fingerprint:");
+        if (pin !== ADMIN_PIN) {
+          if (pin !== null) alert("Incorrect PIN. Biometric registration denied.");
+          return;
+        }
+
+        try {
+          const userId = new Uint8Array(16);
+          crypto.getRandomValues(userId);
+
+          const publicKeyCredentialCreationOptions = {
+            challenge: new Uint8Array(32), // dummy challenge
+            rp: {
+              name: "Admin Dashboard",
+            },
+            user: {
+              id: userId,
+              name: "admin",
+              displayName: "Admin",
+            },
+            pubKeyCredParams: [
+              { alg: -7, type: "public-key" }, // ES256
+              { alg: -257, type: "public-key" } // RS256
+            ],
+            authenticatorSelection: {
+              authenticatorAttachment: "platform",
+              userVerification: "required"
+            },
+            timeout: 60000,
+            attestation: "none"
+          };
+
+          const credential = await navigator.credentials.create({
+            publicKey: publicKeyCredentialCreationOptions
+          });
+
+          // Save credential ID to allow subsequent logins
+          localStorage.setItem('admin_bio_cred_id', bufferToBase64url(credential.rawId));
+          alert("Fingerprint registered successfully!");
+          unlockDashboard();
+
+        } catch (err) {
+          console.error("Biometric registration failed:", err);
+          alert("Registration failed or cancelled.");
+        }
+      } else {
+        // ALREADY REGISTERED: AUTHENTICATE
+        try {
+          const publicKeyCredentialRequestOptions = {
+            challenge: new Uint8Array(32), // dummy challenge
+            allowCredentials: [{
+              id: base64urlToBuffer(existingCredId),
+              type: 'public-key',
+              transports: ['internal'],
+            }],
+            userVerification: "required",
+            timeout: 60000
+          };
+
+          const assertion = await navigator.credentials.get({
+            publicKey: publicKeyCredentialRequestOptions
+          });
+
+          // If successful, unlock
+          unlockDashboard();
+        } catch (err) {
+          console.error("Biometric auth failed:", err);
+          alert("Authentication failed or cancelled.");
+        }
+      }
+    });
 
     /* ── Init ── */
     loadDashboard();
