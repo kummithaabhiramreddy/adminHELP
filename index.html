@@ -875,6 +875,13 @@
       box-shadow: 0 10px 20px -5px rgba(234, 88, 12, 0.4);
       transform: translateY(-2px);
     }
+
+    /* Hide biometric auth on desktop devices */
+    @media (min-width: 769px) {
+      #fingerprintBtn, .auth-divider {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 
