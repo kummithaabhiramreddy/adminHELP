@@ -114,6 +114,14 @@ export default async function handler(req, res) {
     } catch (err) { return sendJSON(res, 500, { error: err.message }); }
   }
 
+  /* Users: List All */
+  if (req.method === 'GET' && normalizedPath === '/api/users') {
+    try {
+      const users = await dbRepo.getAllUsers();
+      return sendJSON(res, 200, { total: users.length, users });
+    } catch (err) { return sendJSON(res, 500, { error: err.message }); }
+  }
+
   /* Donors: Save New */
   if (req.method === 'POST' && (normalizedPath === '/api/donors' || normalizedPath === '/api/register')) {
     try {

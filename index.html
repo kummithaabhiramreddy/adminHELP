@@ -22,6 +22,7 @@
       --amber: #f59e0b;
       --teal: #14b8a6;
       --lavender: #a78bfa;
+      --orange: #f97316;
       --text: #f0e8ea;
       --text-dim: rgba(240, 232, 234, 0.5);
       --text-faint: rgba(240, 232, 234, 0.25);
@@ -292,6 +293,10 @@
       --accent-glow: rgba(167, 139, 250, 0.1);
     }
 
+    .stat-card.orange {
+      --accent-glow: rgba(249, 115, 22, 0.15);
+    }
+
     .stat-label {
       font-size: 0.7rem;
       font-weight: 700;
@@ -322,6 +327,10 @@
 
     .stat-number.lavender {
       color: var(--lavender);
+    }
+
+    .stat-number.orange {
+      color: var(--orange);
     }
 
     .stat-delta {
@@ -990,6 +999,134 @@
     .cancel-btn:hover {
       background: #64748b;
     }
+
+    /* ── HAMBURGER BUTTON ────────────────────────────── */
+    .hamburger-btn {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 24px;
+      height: 18px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      z-index: 10001; /* Must sit above header and sidebar overlay */
+      padding: 0;
+    }
+
+    .hamburger-btn span {
+      display: block;
+      width: 100%;
+      height: 2px;
+      background-color: var(--text);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 2px;
+    }
+
+    .hamburger-btn.active span:nth-child(1) {
+      transform: translateY(8px) rotate(45deg);
+      background-color: var(--red);
+    }
+
+    .hamburger-btn.active span:nth-child(2) {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+
+    .hamburger-btn.active span:nth-child(3) {
+      transform: translateY(-8px) rotate(-45deg);
+      background-color: var(--red);
+    }
+
+    /* ── SIDEBAR DRAWER ──────────────────────────────── */
+    .sidebar-drawer {
+      position: fixed;
+      top: 0;
+      right: -320px;
+      width: 320px;
+      height: 100vh;
+      background: rgba(16, 10, 13, 0.96);
+      backdrop-filter: blur(30px);
+      border-left: 1px solid var(--border);
+      z-index: 9999;
+      transition: right 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 50px 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+      box-shadow: -20px 0 60px rgba(0, 0, 0, 0.8);
+    }
+
+    .sidebar-drawer.active {
+      right: 0;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(220, 60, 80, 0.15);
+      padding-bottom: 20px;
+    }
+
+    .sidebar-links {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-links a {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-decoration: none;
+      padding: 14px 20px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: all 0.25s ease;
+      font-family: 'Archivo', sans-serif;
+    }
+
+    .sidebar-links a:hover {
+      color: var(--text);
+      background: var(--red-dim);
+      border-color: rgba(232, 50, 74, 0.2);
+      transform: translateX(6px);
+    }
+
+    .sidebar-links a .icon {
+      font-size: 1.25rem;
+      transition: transform 0.2s;
+    }
+
+    .sidebar-links a:hover .icon {
+      transform: scale(1.2);
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      z-index: 9998;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    @media(max-width:700px) {
+      .hamburger-btn {
+        display: flex;
+      }
+    }
   </style>
 </head>
 
@@ -1043,6 +1180,26 @@
     <div class="loader-text">Fetching live data from database…</div>
   </div>
 
+  <!-- SIDEBAR DRAWER -->
+  <div class="sidebar-drawer" id="sidebarDrawer">
+    <div class="sidebar-header">
+      <div class="logo" style="font-size: 1.4rem;">
+        <span class="pulse">♥</span> LifeLink
+      </div>
+    </div>
+    <div class="sidebar-links">
+      <a href="#overview"><span class="icon">👥</span> Overview</a>
+      <a href="#blood"><span class="icon">🩸</span> Blood Groups</a>
+      <a href="#types"><span class="icon">🫀</span> Donation Types</a>
+      <a href="#recent"><span class="icon">🕒</span> Recent</a>
+      <a href="#users"><span class="icon">👤</span> Registered Users</a>
+      <a href="#cities"><span class="icon">📍</span> Cities</a>
+    </div>
+  </div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- HEADER -->
+
   <!-- HEADER -->
   <header>
     <div class="logo">
@@ -1054,10 +1211,18 @@
       <a href="#blood">Blood</a>
       <a href="#types">Types</a>
       <a href="#recent">Recent</a>
+      <a href="#users">Users</a>
       <a href="#cities">Cities</a>
     </nav>
-    <div class="live-badge">
-      <div class="live-dot"></div>LIVE DB
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div class="live-badge">
+        <div class="live-dot"></div>LIVE DB
+      </div>
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle Navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
     </div>
   </header>
 
@@ -1127,6 +1292,17 @@
           <div class="progress-bar-wrap">
             <div class="progress-bar-bg">
               <div class="progress-bar-fill" id="bar-both" style="width:0%;background:var(--lavender)"></div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-card orange" id="card-users">
+          <div class="stat-icon">👤</div>
+          <div class="stat-label">Registered Users</div>
+          <div class="stat-number orange" id="stat-users">—</div>
+          <div class="stat-delta" id="stat-users-sub">Loading…</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="bar-users" style="width:0%;background:var(--orange)"></div>
             </div>
           </div>
         </div>
@@ -1208,6 +1384,30 @@
       </div>
     </section>
 
+    <!-- REGISTERED USERS -->
+    <section id="users">
+      <div class="section-head">
+        <h2>Registered Users</h2><span class="tag" id="usersTag">LOADING…</span>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Contact Info</th>
+              <th>Created At</th>
+              <th>User ID</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr>
+              <td colspan="4" style="text-align:center;color:var(--text-faint);padding:30px;">Loading users…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- CITY DISTRIBUTION -->
     <section id="cities">
       <div class="section-head">
@@ -1278,13 +1478,14 @@
     /* ── Main data fetch ── */
     async function loadDashboard() {
       try {
-        const [statsRes, bloodRes, typeRes, recentRes, cityRes, requestsRes] = await Promise.all([
+        const [statsRes, bloodRes, typeRes, recentRes, cityRes, requestsRes, usersRes] = await Promise.all([
           fetch(`${API}/api/stats`),
           fetch(`${API}/api/dashboard/blood-groups`),
           fetch(`${API}/api/dashboard/donation-types`),
           fetch(`${API}/api/donors/recent?limit=100`),
           fetch(`${API}/api/dashboard/cities`),
           fetch(`${API}/api/requests`),
+          fetch(`${API}/api/users`),
         ]);
 
         const stats = await statsRes.json();
@@ -1293,6 +1494,7 @@
         const recent = await recentRes.json();
         const cities = await cityRes.json();
         const requests = await requestsRes.json();
+        const usersData = await usersRes.json();
 
 
         /* Hide loading overlay */
@@ -1309,6 +1511,7 @@
         renderRecent(recent.donors || []);
         renderCities(cities.city_wise_distribution || []);
         renderRequests(requests.requests || []);
+        renderUsers(usersData.users || []);
 
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -1521,6 +1724,43 @@
           el.style.width = el.dataset.pct + '%';
         });
       }, 300);
+    }
+
+    /* ── Render: Users table ── */
+    function renderUsers(usersList) {
+      const tbody = document.getElementById('usersTableBody');
+      const tag = document.getElementById('usersTag');
+      tbody.innerHTML = '';
+
+      tag.textContent = usersList.length + ' USERS';
+
+      // Update stat card for users
+      const totalUsers = usersList.length;
+      animateCount(document.getElementById('stat-users'), totalUsers);
+      document.getElementById('stat-users-sub').innerHTML = `<span style="color:var(--orange)">Registered system users</span>`;
+      setBar('bar-users', 100);
+
+      if (!usersList.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No registered users in database.</td></tr>';
+        return;
+      }
+
+      usersList.forEach(u => {
+        const initials = (u.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const date = u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="table-avatar" style="background:rgba(249, 115, 22, 0.2);color:var(--orange)">${initials}</span><strong>${u.name || '—'}</strong></td>
+          <td>
+            <div style="font-size:0.8rem;font-weight:600">${u.phone || '—'}</div>
+            <div style="font-size:0.65rem;color:var(--text-dim)">${u.email || '—'}</div>
+          </td>
+          <td style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text-dim)">${date}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text-faint)">USR-${u.id}</td>
+        `;
+        tbody.appendChild(tr);
+      });
     }
 
     /* ── Action: Delete Donor ── */
@@ -1858,6 +2098,40 @@
     document.getElementById('authOverlay').addEventListener('touchmove', (e) => {
       e.preventDefault();
     }, { passive: false });
+
+    // Sidebar Drawer Toggle Logic
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const sidebarDrawer = document.getElementById('sidebarDrawer');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const sidebarLinks = document.querySelectorAll('.sidebar-links a');
+
+    function toggleSidebar() {
+      const isActive = sidebarDrawer.classList.toggle('active');
+      hamburgerBtn.classList.toggle('active');
+      sidebarOverlay.classList.toggle('active');
+      
+      // Prevent body scrolling when sidebar is open
+      if (isActive) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        // Only remove overflow lock if lock overlay is NOT open
+        if (document.getElementById('authOverlay').classList.contains('hidden')) {
+          document.body.style.overflow = '';
+        }
+      }
+    }
+
+    if (hamburgerBtn) hamburgerBtn.addEventListener('click', toggleSidebar);
+    if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
+
+    // Close sidebar when clicking any link
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        if (sidebarDrawer.classList.contains('active')) {
+          toggleSidebar();
+        }
+      });
+    });
 
     /* ── Init ── */
     loadDashboard();

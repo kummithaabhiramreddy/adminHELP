@@ -656,6 +656,24 @@ export default {
   },
 
   /**
+   * Get all registered users
+   */
+  getAllUsers: async () => {
+    try {
+      return await db.select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+        createdAt: users.createdAt
+      }).from(users).orderBy(desc(users.createdAt));
+    } catch (err) {
+      console.error('❌ Get all users error:', err);
+      throw err;
+    }
+  },
+
+  /**
    * Get all emergency requests
    */
   getAllRequests: async () => {
